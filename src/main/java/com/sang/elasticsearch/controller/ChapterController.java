@@ -1,28 +1,25 @@
 package com.sang.elasticsearch.controller;
 
-import com.sang.elasticsearch.GetDataMain;
-import com.sang.elasticsearch.bean.Book;
+import com.sang.elasticsearch.bean.Chapter;
 import com.sang.elasticsearch.service.ElasticService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 @RestController
-@RequestMapping("/book")
-public class BookController {
-    private ElasticService<Book> elasticService=new ElasticService<>("book");
+@RequestMapping("/chapter")
+public class ChapterController {
+    private ElasticService<Chapter> elasticService=new ElasticService<>("chapter");
 
     @RequestMapping("/query")
-    public Book query(String id) throws Exception {
+    public Chapter query(String id) throws Exception {
         return elasticService.query(id);
     }
 
     @RequestMapping("/queryAll")
-    public List<Book> queryAll(@RequestBody Map<String,String> map) throws Exception {
+    public List<Chapter> queryAll(@RequestBody Map<String,String> map) throws Exception {
         return elasticService.queryAll(map);
     }
 }

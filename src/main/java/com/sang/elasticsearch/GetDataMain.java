@@ -44,8 +44,8 @@ public class GetDataMain {
             new LinkedBlockingDeque<>(20000),new BlockingRejectedExecutionHandler());
 
     private static final CloseableHttpClient httpClient;
-    @Autowired
-    private ElasticService elasticService;
+    private ElasticService<Book> bookElasticService=new ElasticService<>("book");
+    private ElasticService<Chapter> chapterElasticService=new ElasticService<>("chapter");
 
     private static AtomicInteger totalCount = new AtomicInteger();
 
@@ -110,7 +110,7 @@ public class GetDataMain {
                     book.setUpdateTime(updateTime);
                     System.out.println(book);
                     if (isSaveDB) {
-                        elasticService.add(book);
+                        bookElasticService.add(book);
                     }
                     String url = item.getElementsByTag("a").get(1).attr("href");
                     url = "http://www.jjwxc.net/" + url;
@@ -159,7 +159,7 @@ public class GetDataMain {
                     chapterVO.setContent(content);
                     System.out.println(chapterVO);
                     if (isSaveDB) {
-                        elasticService.add(chapterVO);
+                        chapterElasticService.add(chapterVO);
                     }
                     totalCount.incrementAndGet();
                 } catch (Exception e) {

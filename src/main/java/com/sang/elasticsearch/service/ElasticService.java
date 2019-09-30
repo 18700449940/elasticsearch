@@ -2,8 +2,6 @@ package com.sang.elasticsearch.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.sang.elasticsearch.bean.Book;
-import com.sang.elasticsearch.bean.Chapter;
 import com.sang.elasticsearch.bean.ESEntity;
 import com.sang.elasticsearch.util.EsUtil;
 import org.elasticsearch.ElasticsearchException;
@@ -29,27 +27,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@Service
 public class ElasticService<T> {
     private static final Logger logger = LoggerFactory.getLogger(ElasticService.class);
-    private final String bookIndexName = "book";
-    private final String chapterIndexName = "chapter";
 
+    private String indexName;
+    public ElasticService(String indexName)
+    {
+        this.indexName=indexName;
+    }
     public void add(ESEntity entity) throws Exception {
-        String indexName;
         // 1、创建索引请求
-        if (entity instanceof Chapter) {
-            indexName = chapterIndexName;
-        } else {
-            indexName = bookIndexName;
-        }
         IndexRequest request = new IndexRequest(indexName);
         //文档id
         request.id(entity.getId());
@@ -98,26 +90,17 @@ public class ElasticService<T> {
         logger.info("Employee add");
     }
 
-    public T query(Class clazz,String id) throws Exception {
+    public T query(String id) throws Exception {
         logger.info("Employee query");
-        String indexName="";
-        if(clazz.equals(Book.class))
-        {
-            indexName=bookIndexName;
-        }
-        else if(clazz.equals(Chapter.class))
-        {
-            indexName=chapterIndexName;
-        }
         GetRequest request = new GetRequest(
                 indexName,
                 id);
         GetResponse response = EsUtil.get(request);
-        return (T) JSONObject.parseObject(response.getSourceAsString(),clazz);
+        return (T) JSONObject.parse(response.getSourceAsString());
     }
 
     public List<T> queryAll(Map<String,String>  map) throws Exception {
-        SearchRequest searchRequest = new SearchRequest(bookIndexName);
+        SearchRequest searchRequest = new SearchRequest(indexName);
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 
         //构造QueryBuilder
@@ -235,9 +218,9 @@ public class ElasticService<T> {
 //        }
     }
 
-    public void delete(String id) throws Exception {
+    public void delete(String indexName,String id) throws Exception {
         DeleteRequest request = new DeleteRequest(
-                bookIndexName,//索引
+                indexName,//索引
                 id);//文档ID
 
         //===============================可选参数====================================
