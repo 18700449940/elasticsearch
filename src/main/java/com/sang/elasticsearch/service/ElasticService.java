@@ -2,20 +2,21 @@ package com.sang.elasticsearch.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.sang.elasticsearch.bean.Book;
+import com.sang.elasticsearch.bean.Chapter;
+import com.sang.elasticsearch.bean.ESEntity;
 import com.sang.elasticsearch.util.EsUtil;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.ShardSearchFailure;
 import org.elasticsearch.action.support.replication.ReplicationResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.rest.RestStatus;
@@ -26,36 +27,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class ElasticService {
+public class ElasticService<T> {
     private static final Logger logger = LoggerFactory.getLogger(ElasticService.class);
-    private final String indexName = "fiction";
-    private final String indexType = "_doc";
+    private final String bookIndexName = "book";
+    private final String chapterIndexName = "chapter";
 
-    public void add(Book book) throws Exception {
-        RestHighLevelClient client = EsUtil.getClient();
-        book.setId(UUID.randomUUID().toString());
+    public void add(ESEntity entity) throws Exception {
+        String indexName;
         // 1、创建索引请求
-        IndexRequest request = new IndexRequest(
-                indexName,   //索引
-                indexType,     // mapping type
-                book.getId());     //文档id
-
+        if (entity instanceof Chapter) {
+            indexName = chapterIndexName;
+        } else {
+            indexName = bookIndexName;
+        }
+        IndexRequest request = new IndexRequest(indexName);
+        //文档id
+        request.id(entity.getId());
         // 2、准备文档数据
-        request.source(JSON.toJSONString(book), XContentType.JSON);
+        request.source(JSON.toJSONString(entity), XContentType.JSON);
 
         //4、发送请求
         IndexResponse indexResponse = null;
         try {
             // 同步方式
-            indexResponse = client.index(request, RequestOptions.DEFAULT);
+            indexResponse = EsUtil.index(request);
         } catch (ElasticsearchException e) {
             // 捕获，并处理异常
             //判断是否版本冲突、create但文档已存在冲突
@@ -65,7 +67,6 @@ public class ElasticService {
 
             logger.error("索引异常", e);
         }
-
         //5、处理响应
         if (indexResponse != null) {
             String index = indexResponse.getIndex();
@@ -94,14 +95,17 @@ public class ElasticService {
         logger.info("Employee add");
     }
 
-    public Book query(String id) {
+    public T query(String id) throws Exception {
         logger.info("Employee query");
-        return null;
+        GetRequest request = new GetRequest(
+                "index",
+                id);
+        GetResponse response = EsUtil.get(request);
+        return (T)JSONObject.parseObject(response.getSourceAsString());
     }
 
-    public List<Book> queryAll() throws Exception {
-        RestHighLevelClient client = EsUtil.getClient();
-        SearchRequest searchRequest = new SearchRequest(indexName);
+    public List<ESEntity> queryAll() throws Exception {
+        SearchRequest searchRequest = new SearchRequest(bookIndexName);
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 
         //构造QueryBuilder
@@ -135,7 +139,7 @@ public class ElasticService {
         searchRequest.source(sourceBuilder);
 
         //3、发送请求
-        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+        SearchResponse searchResponse = EsUtil.search(searchRequest);
 
 
         //4、处理响应
@@ -160,7 +164,7 @@ public class ElasticService {
         float maxScore = hits.getMaxScore();
 
         SearchHit[] searchHits = hits.getHits();
-        List<Book> books = new LinkedList<>();
+        List<ESEntity> entitys = new LinkedList<>();
         for (SearchHit hit : searchHits) {
             // do something with the SearchHit
 
@@ -180,7 +184,7 @@ public class ElasticService {
                 */
             logger.info("index:" + index + "  type:" + type + "  id:" + id);
             logger.info(sourceAsString);
-            books.add(JSONObject.parseObject(sourceAsString, Book.class));
+            entitys.add(JSONObject.parseObject(sourceAsString, ESEntity.class));
             //取高亮结果
                 /*Map<String, HighlightField> highlightFields = hit.getHighlightFields();
                 HighlightField highlight = highlightFields.get("title");
@@ -206,21 +210,19 @@ public class ElasticService {
                 }
             }
             */
-        return books;
+        return entitys;
     }
-    public void deleteAll() throws Exception
-    {
-        List<Book> books=queryAll();
-        for(Book book:books)
-        {
-            delete(book.getId());
+
+    public void deleteAll() throws Exception {
+        List<ESEntity> entitys = queryAll();
+        for (ESEntity entity : entitys) {
+            delete(entity.getId());
         }
     }
+
     public void delete(String id) throws Exception {
-        RestHighLevelClient client = EsUtil.getClient();
         DeleteRequest request = new DeleteRequest(
-                indexName,//索引
-                indexType,//类型
+                bookIndexName,//索引
                 id);//文档ID
 
         //===============================可选参数====================================
@@ -239,7 +241,7 @@ public class ElasticService {
 //        request.versionType(VersionType.EXTERNAL);//设置版本类型
 
         //同步执行
-        DeleteResponse deleteResponse = client.delete(request, RequestOptions.DEFAULT);
+        DeleteResponse deleteResponse = EsUtil.delete(request);
 
 
         //Delete Response

@@ -1,22 +1,15 @@
 package com.sang.elasticsearch.bean;
 
+import java.util.Arrays;
 
-
-public class Book {
-    private String id;
+public class Book extends ESEntity{
     private String name;
     private String author;
-    private int chapterTotal;
-    private String chapterName;
-    private String  content;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
+    private String[] types;
+    private String style;
+    private int  wordCount;
+    private long workScore;
+    private String updateTime;
 
     public String getName() {
         return name;
@@ -34,27 +27,56 @@ public class Book {
         this.author = author;
     }
 
-    public int getChapterTotal() {
-        return chapterTotal;
+    public String[] getTypes() {
+        return types;
     }
 
-    public void setChapterTotal(int chapterTotal) {
-        this.chapterTotal = chapterTotal;
+    public void setTypes(String[] types) {
+        this.types = types;
     }
 
-    public String getChapterName() {
-        return chapterName;
+    public String getStyle() {
+        return style;
     }
 
-    public void setChapterName(String chapterName) {
-        this.chapterName = chapterName;
+    public void setStyle(String style) {
+        this.style = style;
     }
 
-    public String getContent() {
-        return content;
+    public int getWordCount() {
+        return wordCount;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setWordCount(int wordCount) {
+        this.wordCount = wordCount;
+    }
+
+    public long getWorkScore() {
+        return workScore;
+    }
+
+    public void setWorkScore(long workScore) {
+        this.workScore = workScore;
+    }
+
+    public String getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(String updateTime) {
+        this.updateTime = updateTime;
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" +
+                "name='" + name + '\'' +
+                ", author='" + author + '\'' +
+                ", types=" + Arrays.toString(types) +
+                ", style='" + style + '\'' +
+                ", wordCount=" + wordCount +
+                ", workScore=" + workScore +
+                ", updateTime='" + updateTime + '\'' +
+                '}';
     }
 }
