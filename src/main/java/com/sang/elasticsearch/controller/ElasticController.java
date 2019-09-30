@@ -20,7 +20,8 @@ public class ElasticController {
 
 
     @RequestMapping("/addTestData")
-    public void addTestData() throws Exception {
+    public String addTestData() throws Exception {
         getDataMain.addData();
+        return "ok";
     }
 }

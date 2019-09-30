@@ -2,6 +2,7 @@ package com.sang.elasticsearch.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.sang.elasticsearch.bean.Book;
 import com.sang.elasticsearch.bean.Chapter;
 import com.sang.elasticsearch.bean.ESEntity;
 import com.sang.elasticsearch.util.EsUtil;
@@ -19,6 +20,7 @@ import org.elasticsearch.action.search.ShardSearchFailure;
 import org.elasticsearch.action.support.replication.ReplicationResponse;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -28,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -95,16 +98,25 @@ public class ElasticService<T> {
         logger.info("Employee add");
     }
 
-    public T query(String id) throws Exception {
+    public T query(Class clazz,String id) throws Exception {
         logger.info("Employee query");
+        String indexName="";
+        if(clazz.equals(Book.class))
+        {
+            indexName=bookIndexName;
+        }
+        else if(clazz.equals(Chapter.class))
+        {
+            indexName=chapterIndexName;
+        }
         GetRequest request = new GetRequest(
-                "index",
+                indexName,
                 id);
         GetResponse response = EsUtil.get(request);
-        return (T)JSONObject.parseObject(response.getSourceAsString());
+        return (T) JSONObject.parseObject(response.getSourceAsString(),clazz);
     }
 
-    public List<ESEntity> queryAll() throws Exception {
+    public List<T> queryAll(Map<String,String>  map) throws Exception {
         SearchRequest searchRequest = new SearchRequest(bookIndexName);
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 
@@ -114,8 +126,11 @@ public class ElasticService<T> {
                     .prefixLength(3)
                     .maxExpansions(10);
             sourceBuilder.query(matchQueryBuilder);*/
+        for(Map.Entry<String,String> entry:map.entrySet())
+        {
+            sourceBuilder.query(QueryBuilders.termQuery(entry.getKey(), entry.getValue()));
+        }
 
-        //sourceBuilder.query(QueryBuilders.termQuery("age", 24));
         sourceBuilder.from(0);
         sourceBuilder.size(10);
         sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
@@ -164,7 +179,7 @@ public class ElasticService<T> {
         float maxScore = hits.getMaxScore();
 
         SearchHit[] searchHits = hits.getHits();
-        List<ESEntity> entitys = new LinkedList<>();
+        List<T> entitys = new LinkedList<>();
         for (SearchHit hit : searchHits) {
             // do something with the SearchHit
 
@@ -184,7 +199,7 @@ public class ElasticService<T> {
                 */
             logger.info("index:" + index + "  type:" + type + "  id:" + id);
             logger.info(sourceAsString);
-            entitys.add(JSONObject.parseObject(sourceAsString, ESEntity.class));
+            entitys.add((T)JSONObject.parse(sourceAsString));
             //取高亮结果
                 /*Map<String, HighlightField> highlightFields = hit.getHighlightFields();
                 HighlightField highlight = highlightFields.get("title");
@@ -214,10 +229,10 @@ public class ElasticService<T> {
     }
 
     public void deleteAll() throws Exception {
-        List<ESEntity> entitys = queryAll();
-        for (ESEntity entity : entitys) {
-            delete(entity.getId());
-        }
+//        List<ESEntity> entitys = queryAll();
+//        for (ESEntity entity : entitys) {
+//            delete(entity.getId());
+//        }
     }
 
     public void delete(String id) throws Exception {

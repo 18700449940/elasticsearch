@@ -7,6 +7,7 @@ import org.apache.http.*;
 import org.apache.http.client.entity.GzipDecompressingEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -72,9 +73,11 @@ public class GetDataMain {
     }*/
 
     public void addData() throws Exception {
+        get("http://my.jjwxc.net/login.php?action=login&login_mode=ajax&loginname=18700449940&loginpassword=ht13891779538&Ekey=&Challenge=&auth_num=&cookietime=0&client_time=1569840992&jsonp=jQuery18009636904359423728_1569840971586&_=1569840992685");
         totalCount.set(0);
-        for (int i = 1; i < 10000; i++) {
+        for (int i = 11; i < 10000; i++) {
             String tmpUrl = baseUrl + i;
+            Thread.sleep(1000);
             Document doc = get(tmpUrl);
             Elements trs = null;
             try {
@@ -177,6 +180,8 @@ public class GetDataMain {
     }
 
     public static void configureHttpClient2(HttpClientBuilder clientBuilder) {
+        BasicCookieStore cookieStore = new BasicCookieStore();
+        clientBuilder.setDefaultCookieStore(cookieStore);
         clientBuilder.setConnectionManager(connManager);
         clientBuilder.addInterceptorFirst(new HttpResponseInterceptor() {
             public void process(final HttpResponse response,
