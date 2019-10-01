@@ -73,6 +73,9 @@ public class GetDataMain {
     }*/
 
     public void addData() throws Exception {
+        if(!ElasticService.existIndex()){
+        ElasticService.createIndexWithMapping();
+        }
         get("http://my.jjwxc.net/login.php?action=login&login_mode=ajax&loginname=18700449940&loginpassword=ht13891779538&Ekey=&Challenge=&auth_num=&cookietime=0&client_time=1569840992&jsonp=jQuery18009636904359423728_1569840971586&_=1569840992685");
         totalCount.set(0);
         for (int i = 11; i < 10000; i++) {

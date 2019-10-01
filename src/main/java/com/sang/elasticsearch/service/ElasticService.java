@@ -6,6 +6,9 @@ import com.sang.elasticsearch.bean.ESEntity;
 import com.sang.elasticsearch.util.EsUtil;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteResponse;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -16,8 +19,12 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.ShardSearchFailure;
 import org.elasticsearch.action.support.replication.ReplicationResponse;
+
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
@@ -25,8 +32,8 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -36,10 +43,11 @@ public class ElasticService<T> {
     private static final Logger logger = LoggerFactory.getLogger(ElasticService.class);
 
     private String indexName;
-    public ElasticService(String indexName)
-    {
-        this.indexName=indexName;
+
+    public ElasticService(String indexName) {
+        this.indexName = indexName;
     }
+
     public void add(ESEntity entity) throws Exception {
         // 1、创建索引请求
         IndexRequest request = new IndexRequest(indexName);
@@ -99,7 +107,7 @@ public class ElasticService<T> {
         return (T) JSONObject.parse(response.getSourceAsString());
     }
 
-    public List<T> queryAll(Map<String,String>  map) throws Exception {
+    public List<T> queryAll(Map<String, String> map) throws Exception {
         SearchRequest searchRequest = new SearchRequest(indexName);
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 
@@ -109,9 +117,9 @@ public class ElasticService<T> {
                     .prefixLength(3)
                     .maxExpansions(10);
             sourceBuilder.query(matchQueryBuilder);*/
-        for(Map.Entry<String,String> entry:map.entrySet())
-        {
-            sourceBuilder.query(QueryBuilders.termQuery(entry.getKey(), entry.getValue()));
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            //sourceBuilder.query(QueryBuilders.termQuery(entry.getKey(), entry.getValue()));
+            sourceBuilder.query(QueryBuilders.matchQuery(entry.getKey(), entry.getValue()));
         }
 
         sourceBuilder.from(0);
@@ -182,7 +190,7 @@ public class ElasticService<T> {
                 */
             logger.info("index:" + index + "  type:" + type + "  id:" + id);
             logger.info(sourceAsString);
-            entitys.add((T)JSONObject.parse(sourceAsString));
+            entitys.add((T) JSONObject.parse(sourceAsString));
             //取高亮结果
                 /*Map<String, HighlightField> highlightFields = hit.getHighlightFields();
                 HighlightField highlight = highlightFields.get("title");
@@ -218,7 +226,7 @@ public class ElasticService<T> {
 //        }
     }
 
-    public void delete(String indexName,String id) throws Exception {
+    public void delete(String indexName, String id) throws Exception {
         DeleteRequest request = new DeleteRequest(
                 indexName,//索引
                 id);//文档ID
@@ -261,6 +269,50 @@ public class ElasticService<T> {
         if (deleteResponse.getResult() == DocWriteResponse.Result.NOT_FOUND) {
             //如果找不到要删除的文档，执行某些操作
         }
+    }
+
+    /**
+     * 创建带分词器的索引
+     *
+     * @throws IOException
+     */
+    public static void createIndexWithMapping() throws Exception {
+
+
+        CreateIndexRequest request = new CreateIndexRequest("chapter");
+
+        XContentBuilder mappingBuilder = JsonXContent.contentBuilder()
+                .startObject()
+                .startObject("properties")
+                .startObject("title")
+                .field("type", "text")
+                .field("analyzer", "ik_max_word")
+                .field("index", "true")
+                .endObject()
+                .startObject("content")
+                .field("type", "text")
+                .field("analyzer", "ik_max_word") // ik_max_word 这个分词器是ik的，可以去github上搜索安装es的ik分词器插件
+                .field("index", "true")
+                .endObject()
+                .endObject()
+                .endObject();
+        request.mapping("_doc", mappingBuilder);
+
+        CreateIndexResponse response = EsUtil.create(request);
+
+        System.out.println(response.isAcknowledged());
+    }
+
+    public static boolean  existIndex() throws Exception {
+
+
+        GetIndexRequest request = new GetIndexRequest();
+        request.indices("chapter");
+        request.local(false);
+        request.humanReadable(true);
+
+        boolean exists = EsUtil.exists(request);
+        return exists;
     }
 
 }
